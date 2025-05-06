@@ -3,6 +3,39 @@
 #include <string.h>
 
 #include "queue.h"
+/* General q_insert marco */
+#define q_insert(head, s, fn)                       \
+    ({                                              \
+        if (!head || !s)                            \
+            return false;                           \
+        size_t len = strlen(s);                     \
+        element_t *ele = malloc(sizeof(element_t)); \
+        char *str = malloc(len + 1);                \
+        if (!ele || !str) {                         \
+            free(ele);                              \
+            free(str);                              \
+            return false;                           \
+        }                                           \
+        strncpy(str, s, len);                       \
+        str[len] = '\0';                            \
+        ele->value = str;                           \
+        INIT_LIST_HEAD(&ele->list);                 \
+        fn(&ele->list, head);                       \
+        return true;                                \
+    })
+/* General q_remove marco */
+#define q_remove(head, sp, bufsize, direction)                         \
+    ({                                                                 \
+        if (!head || list_empty(head))                                 \
+            return NULL;                                               \
+        element_t *ele = list_entry(head->direction, element_t, list); \
+        list_del_init(&ele->list);                                     \
+        if (sp) {                                                      \
+            strncpy(sp, ele->value, bufsize - 1);                      \
+            sp[bufsize - 1] = '\0';                                    \
+        }                                                              \
+        return ele;                                                    \
+    })
 
 /* Create an empty queue */
 struct list_head *q_new()
