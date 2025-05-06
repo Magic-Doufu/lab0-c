@@ -7,6 +7,7 @@
 /* Create an empty queue */
 struct list_head *q_new()
 {
+    printf("%d", 2);
     return NULL;
 }
 
