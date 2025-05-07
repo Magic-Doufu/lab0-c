@@ -3,39 +3,13 @@
 #include <string.h>
 
 #include "queue.h"
-/* General q_insert marco */
-#define q_insert(head, s, fn)                       \
-    ({                                              \
-        if (!head || !s)                            \
-            return false;                           \
-        size_t len = strlen(s);                     \
-        element_t *ele = malloc(sizeof(element_t)); \
-        char *str = malloc(len + 1);                \
-        if (!ele || !str) {                         \
-            free(ele);                              \
-            free(str);                              \
-            return false;                           \
-        }                                           \
-        strncpy(str, s, len);                       \
-        str[len] = '\0';                            \
-        ele->value = str;                           \
-        INIT_LIST_HEAD(&ele->list);                 \
-        fn(&ele->list, head);                       \
-        return true;                                \
-    })
-/* General q_remove marco */
-#define q_remove(head, sp, bufsize, direction)                         \
-    ({                                                                 \
-        if (!head || list_empty(head))                                 \
-            return NULL;                                               \
-        element_t *ele = list_entry(head->direction, element_t, list); \
-        list_del_init(&ele->list);                                     \
-        if (sp) {                                                      \
-            strncpy(sp, ele->value, bufsize - 1);                      \
-            sp[bufsize - 1] = '\0';                                    \
-        }                                                              \
-        return ele;                                                    \
-    })
+
+/* General delete element marco */
+#define del_element_by_node(node)                             \
+    {                                                         \
+        list_del_init(node);                                  \
+        q_release_element(list_entry(node, element_t, list)); \
+    }
 
 /* Create an empty queue */
 struct list_head *q_new()
@@ -53,9 +27,9 @@ void q_free(struct list_head *head)
     if (!head)
         return;
 
-    element_t *entry, *safe;
-    list_for_each_entry_safe(entry, safe, head, list) {
-        q_release_element(entry);
+    struct list_head *entry, *safe;
+    list_for_each_safe(entry, safe, head) {
+        del_element_by_node(entry);
     }
     free(head);
 }
@@ -63,25 +37,47 @@ void q_free(struct list_head *head)
 /* Insert an element at head of queue */
 bool q_insert_head(struct list_head *head, char *s)
 {
-    q_insert(head, s, list_add);
+    if (!head || !s)
+        return false;
+    element_t *ele = malloc(sizeof(element_t));
+    if (!ele)
+        return false;
+    ele->value = strdup(s);
+    if (!ele->value) {
+        free(ele);
+        return false;
+    }
+    INIT_LIST_HEAD(&ele->list);
+    list_add(&ele->list, head);
+    return true;
 }
 
 /* Insert an element at tail of queue */
 bool q_insert_tail(struct list_head *head, char *s)
 {
-    q_insert(head, s, list_add_tail);
+    return q_insert_head(head->prev, s);
 }
 
 /* Remove an element from head of queue */
 element_t *q_remove_head(struct list_head *head, char *sp, size_t bufsize)
 {
-    q_remove(head, sp, bufsize, next);
+    if (!head || list_empty(head))
+        return NULL;
+    element_t *ele = list_first_entry(head, element_t, list);
+    if (sp && ele->value) {
+        strncpy(sp, ele->value, bufsize - 1);
+        sp[bufsize - 1] = '\0';
+    }
+    list_del_init(head->next);
+    return ele;
 }
 
 /* Remove an element from tail of queue */
 element_t *q_remove_tail(struct list_head *head, char *sp, size_t bufsize)
 {
-    q_remove(head, sp, bufsize, prev);
+    if (!head || list_empty(head))
+        return NULL;
+    return q_remove_head(head->prev->prev, sp, bufsize);
 }
 
 /* Return number of elements in queue */
